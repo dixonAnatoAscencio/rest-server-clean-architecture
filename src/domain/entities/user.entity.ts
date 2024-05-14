@@ -8,11 +8,12 @@ export class UserEntity {
     public emailValidated: boolean,
     public password: string,
     public role: string[],
-    public img: string
+    public img?: string
   ) {}
 
-  static fromObject(obj: { [key: string]: any }) {
-    const { _id, id, name, email, emailValidated, password, role, img } = obj;
+  static fromObject(object: { [key: string]: any }) {
+    const { id, _id, name, email, emailValidated, password, role, img } =
+      object;
 
     if (!_id && !id) {
       throw CustomError.badRequest("Missing id");
@@ -20,9 +21,9 @@ export class UserEntity {
 
     if (!name) throw CustomError.badRequest("Missing name");
     if (!email) throw CustomError.badRequest("Missing email");
-    if (!password) throw CustomError.badRequest("Missing password");
-    if (!emailValidated === undefined)
+    if (emailValidated === undefined)
       throw CustomError.badRequest("Missing emailValidated");
+    if (!password) throw CustomError.badRequest("Missing password");
     if (!role) throw CustomError.badRequest("Missing role");
 
     return new UserEntity(

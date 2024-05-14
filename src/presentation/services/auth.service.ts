@@ -1,13 +1,64 @@
+import { bcryptAdapter, JwtAdapter } from "../../config";
 import { UserModel } from "../../data";
-import { RegisterUserDto } from "../../domain";
+import {
+  CustomError,
+  RegisterUserDto,
+  UserEntity,
+  LoginUserDto,
+} from "../../domain";
 
 export class AuthService {
+  // DI
   constructor() {}
 
-  public async registerUser(registerDto: RegisterUserDto) {
-    const existUser = await UserModel.findOne({ email: registerDto.email });
-    if (existUser) return ["User already exists", undefined];
+  public async registerUser(registerUserDto: RegisterUserDto) {
+    const existUser = await UserModel.findOne({ email: registerUserDto.email });
+    if (existUser) throw CustomError.badRequest("Email already exist");
 
-    return "todo ok";
+    try {
+      const user = new UserModel(registerUserDto);
+
+      // Encriptar la contraseña
+      const hashedPassword = await bcryptAdapter.hash(registerUserDto.password);
+      user.password = hashedPassword;
+
+      await user.save();
+      // JWT <---- para mantener la autenticación del usuario
+
+      // Email de confirmación
+
+      const { password, ...userEntity } = UserEntity.fromObject(user);
+
+      return {
+        user: userEntity,
+        token: "ABC",
+      };
+    } catch (error) {
+      throw CustomError.internalServer(`${error}`);
+    }
+  }
+
+  public async loginUser(loginUserDto: LoginUserDto) {
+    const user = await UserModel.findOne({ email: loginUserDto.email });
+    if (!user) throw CustomError.badRequest("Email not exist");
+
+    const isMatching = bcryptAdapter.compare(
+      loginUserDto.password,
+      user.password
+    );
+    if (!isMatching) throw CustomError.badRequest("Password is not valid");
+
+    const { password, ...userEntity } = UserEntity.fromObject(user);
+
+    const token = await JwtAdapter.generateToken({
+      id: user.id,
+      email: user.email,
+    });
+    if (!token) throw CustomError.internalServer("Error while creating JWT");
+
+    return {
+      user: userEntity,
+      token: token,
+    };
   }
 }
