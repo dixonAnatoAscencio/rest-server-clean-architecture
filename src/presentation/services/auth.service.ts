@@ -88,4 +88,23 @@ export class AuthService {
 
     return true;
   };
+
+  public async validateEmail(token: string) {
+    const payload = await JwtAdapter.validateToken(token);
+    if (!payload) throw CustomError.badRequest("Invalid token");
+
+    const { email } = payload as { email: string };
+    if(!email) throw CustomError.internalServer(" email not in token");
+
+    const user = await UserModel.findOne({ email });
+    //si envian un token con un email que no existe en la base de datos es un problema nuestro 
+    //por eso el internal server error
+    if(!user) throw CustomError.internalServer("Email not exist");
+
+    user.emailValidated = true;
+    await user.save();
+
+    return true;
+  }
+
 }
